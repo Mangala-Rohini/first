@@ -1,0 +1,128 @@
+import pandas as pd
+import json
+from datetime import datetime
+from main import dbconnect
+f = 'C:\\Users\\RohiniMangala\\Downloads\\employee_data.json'
+df = pd.read_json(f)
+def dqcheck():
+
+#print(df.to_string())
+    df['PhoneNumber'] = df['PhoneNumber'].replace('-', '', regex=True)
+
+# Null check for 'ID' column
+    df_null_id = df[df['ID'].isnull()]
+#print("Null Check for ID")
+#print(df_null_id)
+
+# Length check for 'PhoneNumber' column
+    df_len_check = df[df['PhoneNumber'].astype(str).str.len() != 10]
+#print("\nLength Check for PhoneNumber")
+#print(df_len_check)
+
+# Date format check for 'DateOfBirth' column
+    df['DateOfBirth'] = pd.to_datetime(df['DateOfBirth'], errors='coerce')
+    df_date_format_check = df[df['DateOfBirth'].isnull()]
+#print("\nDate Format Check")
+#print(df_date_format_check)
+
+# Separate into correct and incorrect data
+    correct_data = df[~(df['ID'].isnull() | (df['PhoneNumber'].astype(str).str.len() != 10) | df['DateOfBirth'].isnull())]
+    incorrect_data = df[(df['ID'].isnull() | (df['PhoneNumber'].astype(str).str.len() != 10) | df['DateOfBirth'].isnull())]
+
+#print("\nCorrect Data")
+#print(correct_data.to_string())
+#print("\nIncorrect Data")
+    print(incorrect_data)
+    db_connection = dbconnect()
+    cursor = db_connection.cursor()
+# Send correct_data to the 'success_table'
+    correct_data.to_sql('SuccessTable', db_connection, index=False, if_exists='replace')
+
+# Send incorrect_data to the 'incorrect_table'
+    incorrect_data.to_sql('ErrorTable', db_connection, index=False, if_exists='replace')
+    result = {'passed_data': len(correct_data) , 'failed_data': len(incorrect_data)}
+    db_connection.commit()
+    db_connection.close()
+    return result
+
+JK = dqcheck()
+print(JK)
+
+def Userinput(test):
+    db_connection = dbconnect()
+    cursor = db_connection.cursor()
+    if test == 'pass':
+        passed = '''select * from SuccessTable'''
+        v = [row for row in cursor.execute(passed)]
+        db_connection.commit()
+        db_connection.close()
+        return v
+    elif test == 'fail':
+        failed = '''select * from ErrorTable'''
+        v = [row for row in cursor.execute(failed)]
+        db_connection.commit()
+        db_connection.close()
+        return v
+    else:
+        return None
+
+
+
+
+
+
+import pandas as pd
+from main import dbconnect
+import json
+from datetime import datetime
+f = 'C:\\Users\\RohiniMangala\\Downloads\\employee_data.json'
+df = pd.read_json(f)
+
+def is_correct_date_format(date_str):
+    try:
+        datetime.strptime(date_str, '%Y-%m-%d')
+        return True
+    except ValueError:
+        return False
+
+def dqcheck():
+    # Remove hyphens from the 'PhoneNumber' column
+    df['PhoneNumber'] = df['PhoneNumber'].replace('-', '', regex=True)
+
+    # Null check for 'ID' column
+    df_null_id = df[df['ID'].isnull()]
+
+    # Length check for 'PhoneNumber' column
+    df_len_check = df[df['PhoneNumber'].astype(str).str.len() != 10]
+
+    # Check date format for 'DateOfBirth' column
+    df['IsCorrectDateFormat'] = df['DateOfBirth'].astype(str).apply(is_correct_date_format)
+
+    # Separate into correct and incorrect data
+    correct_data = df[~(df['ID'].isnull() | (df['PhoneNumber'].astype(str).str.len() != 10) | ~df['IsCorrectDateFormat'])]
+    incorrect_data = df[(df['ID'].isnull() | (df['PhoneNumber'].astype(str).str.len() != 10) | ~df['IsCorrectDateFormat'])]
+
+    # Print incorrect data with actual values
+    print("Incorrect Date Format Data")
+    print(incorrect_data[['ID', 'Name', 'DateOfBirth', 'PhoneNumber']])
+
+    # Database connection
+    db_connection = dbconnect()
+    cursor = db_connection.cursor()
+
+    # Send correct_data to the 'SuccessTable'
+    correct_data.to_sql('SuccessTable', db_connection, index=False, if_exists='replace')
+
+    # Send incorrect_data to the 'ErrorTable'
+    incorrect_data.to_sql('ErrorTable', db_connection, index=False, if_exists='replace')
+
+    # Commit and close the database connection
+    db_connection.commit()
+    db_connection.close()
+
+    result = {'passed_data': len(correct_data), 'failed_data': len(incorrect_data)}
+    return result
+
+# Run the dqcheck function
+JK = dqcheck()
+print(JK)
