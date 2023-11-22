@@ -8,7 +8,7 @@ def dqcheck():
 #print statement
 #print(df.to_string())
     df['PhoneNumber'] = df['PhoneNumber'].replace('-', '', regex=True)
-
+#print phonenumber
 # Null check for 'ID' column
     df_null_id = df[df['ID'].isnull()]
 #print("Null Check for ID")
